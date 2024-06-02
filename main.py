@@ -36,9 +36,6 @@ def reconstruct_DNA(graph, dna_length, instance):
                             path_length += v[1]
                             v[0].visits += 1j
                         break
-
-    print("Path length: ", path_length)
-    print("Double visited count: ", double_visited_count)
     return path
 
 def verify_edges(path, visited_nodes, path_length, double_visited_count, instance, graph, dna_length):
