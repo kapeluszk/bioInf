@@ -3,79 +3,79 @@ import utils
 import os
 
 
-def reconstruct_DNA(graph, dna_length, instance):
-    visited_nodes = {graph.first}
-    path = [[graph.first, 0]]
-    path_length = len(graph.vertices[0].oligonucleotide)
+def reconstruct_DNA(graph, sequence_length, instance):
+    visited_vertices = {graph.first_vertex}
+    path = [[graph.first_vertex, 0]]
+    path_length = len(graph.first_vertex.oligonucleotide)
     end_mode = False
     double_visited_count = 0
     MAX_ATTEMPTS = 3
 
-    while path_length < dna_length:
-        if len(visited_nodes) / len(graph.vertices) < 0.8 and not end_mode:
+    while path_length < sequence_length:
+        if len(visited_vertices) / len(graph.vertices) < 0.8 and not end_mode:
             if path[-1][0].edges:
-                checked, path_length, double_visited_count = verify_edges(path, visited_nodes, path_length, double_visited_count, instance, graph, dna_length)
+                checked, path_length, double_visited_count = verify_edges(path, visited_vertices, path_length, double_visited_count, instance, graph, sequence_length)
             if not checked:
-                path, path_length, end_mode = handle_unchecked(path, visited_nodes, path_length, graph, end_mode)
+                path, path_length, end_mode = handle_unchecked(path, visited_vertices, path_length, graph, end_mode)
         else:
-            path, path_length = handle_else(path, path_length, end_mode, graph, dna_length)
+            path, path_length = handle_end_mode(path, path_length, end_mode, graph, sequence_length)
 
         print("added vertex: ", path[-1][0].oligonucleotide)
         if path[-1][0].attempts < MAX_ATTEMPTS:
             path[-1][0].attempts += 1
         else:
             #do not pop the first vertex
-            if path[-1][0] is not graph.first:
+            if path[-1][0] is not graph.first_vertex:
                 path.pop()
                 path_length -= 1
             if path and path[-1][0] is not None:
-                for v in path[-1][0].edges:
-                    if v[0] not in [vertex[0] for vertex in path]:
-                        if path_length + v[1] <= dna_length:
-                            path.append([v[0], v[1]])
-                            path_length += v[1]
-                            v[0].visits += 1j
+                for adjacent_vertex in path[-1][0].edges:
+                    if adjacent_vertex[0] not in [vertex[0] for vertex in path]:
+                        if path_length + adjacent_vertex[1] <= sequence_length:
+                            path.append([adjacent_vertex[0], adjacent_vertex[1]])
+                            path_length += adjacent_vertex[1]
+                            adjacent_vertex[0].visits += 1j
                         break
     return path
 
-def verify_edges(path, visited_nodes, path_length, double_visited_count, instance, graph, dna_length):
+def verify_edges(path, visited_vertices, path_length, double_visited_count, instance, graph, sequence_length):
     checked = False
     if len(path[-1][0].edges) == 0:
         print("No edges")
-        path, path_length = handle_no_edges(path, path_length, False, graph, dna_length)
+        path, path_length = handle_no_edges(path, path_length, False, graph, sequence_length)
         return checked, path_length, double_visited_count
-    for v in path[-1][0].edges:
+    for adjacent_vertex in path[-1][0].edges:
         if double_visited_count > instance.negativeAmount * 1.5:
-            if v[0].visits == 0 and v[1] == 1:
-                path, visited_nodes, path_length, double_visited_count = update_path_and_visited_nodes(path, visited_nodes, path_length, v, double_visited_count)
+            if adjacent_vertex[0].visits == 0 and adjacent_vertex[1] == 1:
+                path, visited_vertices, path_length, double_visited_count = update_path_and_visited_vertices(path, visited_vertices, path_length, adjacent_vertex, double_visited_count)
                 checked = True
                 break
         else:
-            if v[1] == 1:
-                path, visited_nodes, path_length, double_visited_count = update_path_and_visited_nodes(path, visited_nodes, path_length, v, double_visited_count)
+            if adjacent_vertex[1] == 1:
+                path, visited_vertices, path_length, double_visited_count = update_path_and_visited_vertices(path, visited_vertices, path_length, adjacent_vertex, double_visited_count)
                 checked = True
                 break
     return checked, path_length, double_visited_count
 
-def update_path_and_visited_nodes(path, visited_nodes, path_length, v, double_visited_count):
-    path.append([v[0], 1])
-    visited_nodes.add(v[0])
-    path_length += v[1]
-    v[0].visits += 1
-    if v[0].visits > 1:
+def update_path_and_visited_vertices(path, visited_vertices, path_length, adjacent_vertex, double_visited_count):
+    path.append([adjacent_vertex[0], 1])
+    visited_vertices.add(adjacent_vertex[0])
+    path_length += adjacent_vertex[1]
+    adjacent_vertex[0].visits += 1
+    if adjacent_vertex[0].visits > 1:
         double_visited_count += 1
-    return path, visited_nodes, path_length, double_visited_count
+    return path, visited_vertices, path_length, double_visited_count
 
-def handle_unchecked(path, visited_nodes, path_length, graph, end_mode):
-    exceptions = []
+def handle_unchecked(path, visited_vertices, path_length, graph, end_mode):
+    excluded_vertices = []
     exhausted = False
     new_path = None
     while not exhausted:
-        dest, exhausted = utils.find_free_spots(graph, exceptions)
-        if dest is not None:
-            new_path, distance = utils.dijkstra_shortest_path(graph, path[-1][0], dest)
-        if new_path is None or dest is None:
-            exceptions.append(dest)
+        dest_vertex, exhausted = utils.find_unvisited_vertices(graph, excluded_vertices)
+        if dest_vertex is not None:
+            new_path, distance = utils.dijkstra_shortest_path(graph, path[-1][0], dest_vertex)
+        if new_path is None or dest_vertex is None:
+            excluded_vertices.append(dest_vertex)
         if new_path is not None:
             break
 
@@ -86,31 +86,31 @@ def handle_unchecked(path, visited_nodes, path_length, graph, end_mode):
         end_mode = True
     return path, path_length, end_mode
 
-def handle_else(path, path_length, end_mode, graph, dna_length):
+def handle_end_mode(path, path_length, end_mode, graph, sequence_length):
     if len(path[-1][0].edges) != 0:
-        v = path[-1][0].edges[0]
-        path.append([v[0], v[1]])
-        path_length += v[1]
-        v[0].visits += 1
+        adjacent_vertex = path[-1][0].edges[0]
+        path.append([adjacent_vertex[0], adjacent_vertex[1]])
+        path_length += adjacent_vertex[1]
+        adjacent_vertex[0].visits += 1
     else:
-        path, path_length = handle_no_edges(path, path_length, end_mode, graph, dna_length)
+        path, path_length = handle_no_edges(path, path_length, end_mode, graph, sequence_length)
     return path, path_length
 
-def handle_no_edges(path, path_length, end_mode, graph, dna_length):
-    v = path[-1][0]
+def handle_no_edges(path, path_length, end_mode, graph, sequence_length):
+    adjacent_vertex = path[-1][0]
     found = False
     for i in [4, 5]:
         if found:
             break
         for on in graph.vertices:
-            if on.oligonucleotide[i:] == v.oligonucleotide[:len(on.oligonucleotide) - i]:
+            if on.oligonucleotide[i:] == adjacent_vertex.oligonucleotide[:len(on.oligonucleotide) - i]:
                 path.append([on, i])
                 on.visits += 1
                 path_length += i
                 found = True
                 break
     if end_mode and not found:
-        path_length = dna_length
+        path_length = sequence_length
     return path, path_length
 
 def path_to_string(path):
@@ -120,7 +120,6 @@ def path_to_string(path):
 
     result = result[:-1] + path[-1][0].oligonucleotide
     return result
-
 def save_batch_results_to_csv(folder_path, avg_levenstein, levenstein_table):
     # save to a csv in first line avg_levenstein, in second line instance name and levenstein distance
     with open(os.path.join(folder_path, 'results.csv'), 'w') as file:
@@ -154,7 +153,7 @@ def main():
         # Save the instance to a file
         generator.Instance.save_instance(instance, folder_path, 'instance.txt')
         graph = utils.Graph(k-1)
-        graph.build(instance.spectrum, instance.first)
+        graph.build(instance.spectrum, instance.firstOligonucleotyde)
         path = reconstruct_DNA(graph, n, instance)
         string_path = path_to_string(path)
         print(string_path)
@@ -168,7 +167,7 @@ def main():
         k = instance.k
         print(n,k)
         graph = utils.Graph(k-1)
-        graph.build(instance.spectrum, instance.first)
+        graph.build(instance.spectrum, instance.firstOligonucleotude)
         path = reconstruct_DNA(graph, n, instance)
         string_path = path_to_string(path)
         print(string_path)
@@ -189,7 +188,7 @@ def main():
         instance.insert_negative_errors(neg_err)
         instance.insert_positive_errors(pos_err)
         graph = utils.Graph(k-1)
-        graph.build(instance.spectrum, instance.first)
+        graph.build(instance.spectrum, instance.firstOligonucleotyde)
         path = reconstruct_DNA(graph, n, instance)
         string_path = path_to_string(path)
         print(string_path)
@@ -207,7 +206,7 @@ def main():
         instance.insert_negative_errors(neg_err)
         instance.insert_positive_errors(pos_err)
         graph = utils.Graph(k-1)
-        graph.build(instance.spectrum, instance.first)
+        graph.build(instance.spectrum, instance.firstOligonucleotyde)
         path = reconstruct_DNA(graph, n, instance)
         string_path = path_to_string(path)
         print(string_path)
@@ -237,7 +236,7 @@ def main():
             k = instance.k
             print(n, k)
             graph = utils.Graph(overlap)
-            graph.build(instance.spectrum, instance.first)
+            graph.build(instance.spectrum, instance.firstOligonucleotyde)
             path = reconstruct_DNA(graph, n, instance)
             string_path = path_to_string(path)
             leven = utils.levenshteinDistance(string_path, instance.dna)
@@ -263,7 +262,7 @@ def main():
             instance.insert_negative_errors(neg_err)
             instance.insert_positive_errors(pos_err)
             graph = utils.Graph(k-1)
-            graph.build(instance.spectrum, instance.first)
+            graph.build(instance.spectrum, instance.firstOligonucleotyde)
             path = reconstruct_DNA(graph, n, instance)
             string_path = path_to_string(path)
             leven = utils.levenshteinDistance(string_path, instance.dna)
@@ -276,7 +275,7 @@ def main():
         file_path = input('Enter the path to the file: ')
         instance.load_DNA_from_txt(file_path)
         graph = utils.Graph(instance.k-1)
-        graph.build(instance.spectrum, instance.first)
+        graph.build(instance.spectrum, instance.firstOligonucleotyde)
         path = reconstruct_DNA(graph, instance.n, instance)
         string_path = path_to_string(path)
         lev = utils.levenshteinDistance(string_path, instance.dna)

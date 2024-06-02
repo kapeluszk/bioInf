@@ -7,17 +7,18 @@ class Instance:
     def __init__(self):
         self.n = None
         self.k = None
+        self.firstOligonucleotyde = ""
         self.negativeAmount = None
         self.positiveAmount = None
         self.spectrum = list()
         self.repeats = 0
         self.dna = ""
-        self.first = ""
+
 
     def load_instance(self, file_path):
         with open(file_path, "r") as file:
             self.dna = file.readline().rstrip()
-            self.first = file.readline().rstrip()
+            self.firstOligonucleotyde = file.readline().rstrip()
             data = file.readline().split()
             print(data)
             self.n = int(data[0])
@@ -37,18 +38,15 @@ class Instance:
             self.dna = dna[:self.n]
             k = input("Enter the length of oligonucleotide: ")
             self.k = int(k)
-            self.first = self.dna[:self.k]
+            self.firstOligonucleotyde = self.dna[:self.k]
             self.spectrum = [self.dna[i:i + self.k] for i in range(n - self.k + 1)]
-            self.spectrum = [self.first] + sorted(self.spectrum[1:])
+            self.spectrum = [self.firstOligonucleotyde] + sorted(self.spectrum[1:])
             self.repeats = sum(self.spectrum[i] == self.spectrum[i+1] for i in range(len(self.spectrum)-1))
             self.negative = 0
             self.negativeAmount = math.floor((n - self.k + 1) * self.negative) + self.repeats
             self.negative = self.negativeAmount / (n - self.k + 1)
             self.positiveAmount = 0
             self.positive = 0
-            print("DNA: ", self.dna)
-            print("First oligonucleotide: ", self.first)
-            print("Spectrum: ", self.spectrum)
 
 
 
@@ -60,9 +58,9 @@ class Instance:
         self.negative = 0
         while True:
             self.dna = ''.join(random.choices('ACGT', k=self.n))
-            self.first = self.dna[:self.k]
+            self.firstOligonucleotyde = self.dna[:self.k]
             self.spectrum = [self.dna[i:i + self.k] for i in range(self.n - self.k + 1)]
-            self.spectrum = [self.first] + sorted(self.spectrum[1:])
+            self.spectrum = [self.firstOligonucleotyde] + sorted(self.spectrum[1:])
             self.repeats = sum(self.spectrum[i] == self.spectrum[i + 1] for i in range(len(self.spectrum) - 1))
             if self.repeats == 0:
                 break
@@ -77,7 +75,7 @@ class Instance:
         file_path = os.path.join(folder_path, filename)
         with open(file_path, "w+") as file:
             file.write(self.dna + "\n")
-            file.write(self.first + "\n")
+            file.write(self.firstOligonucleotyde + "\n")
             file.write(f"{self.n} {self.k} {self.repeats} {self.negative} {self.positive}\n")
             for s in self.spectrum:
                 file.write(s + "\n")
@@ -109,7 +107,7 @@ class Instance:
 
     def insert_negative_errors(self, amount):
         for _ in range(amount - self.repeats):
-            index = random.randint(1, len(self.spectrum) - 1)
+            index = random.randint(2, len(self.spectrum) - 1)
             print(f"Deleting {self.spectrum[index]}")
             self.spectrum.pop(index)
         self.negativeAmount += amount

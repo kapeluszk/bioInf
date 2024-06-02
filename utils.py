@@ -1,26 +1,26 @@
 import heapq
 class Graph:
 
-    def __init__(self, max_overlay):
+    def __init__(self, max_overlap):
         self.vertices = []
-        self.overlay = max_overlay
-        self.first = None
+        self.max_overlap = max_overlap
+        self.first_vertex = None
 
-    def add_vertex(self, vertex):
-        self.vertices.append(vertex)
+    def add_vertex(self, new_vertex):
+        self.vertices.append(new_vertex)
 
-    def build(self, spectrum, first):
+    def build(self, spectrum, first_oligonucleotide):
         for oligonucleotide in spectrum:
-            v = Vertex(oligonucleotide)
-            self.add_vertex(v)
-            if v.oligonucleotide == first:
-                self.first = v
+            new_vertex = Vertex(oligonucleotide)
+            self.add_vertex(new_vertex)
+            if new_vertex.oligonucleotide == first_oligonucleotide:
+                self.first_vertex = new_vertex
 
-        for i in range(1, self.overlay + 1):
-            for vertex1 in self.vertices:
-                for vertex2 in self.vertices:
-                    if vertex1.oligonucleotide[i:] == vertex2.oligonucleotide[:len(vertex1.oligonucleotide) - i]:
-                        vertex1.edges.append([vertex2, i, 0])
+        for overlap in range(1, self.max_overlap + 1):
+            for source_vertex in self.vertices:
+                for target_vertex in self.vertices:
+                    if source_vertex.oligonucleotide[overlap:] == target_vertex.oligonucleotide[:len(source_vertex.oligonucleotide) - overlap]:
+                        source_vertex.edges.append([target_vertex, overlap, 0])
 
         print("Graph built correctly...")
 
@@ -31,19 +31,19 @@ class Vertex:
         self.visits = 0
         self.attempts = 0
 
-    def add_visit(self):
+    def increment_visits(self):
         self.visits += 1
 
     def __lt__(self, other):
         return True
 
-def find_free_spots(graph, exceptions):
+def find_unvisited_vertices(graph, excluded_vertices):
     for vertex in graph.vertices:
-        if vertex not in exceptions and vertex.visits == 0:
+        if vertex not in excluded_vertices and vertex.visits == 0:
             if all(adjacent_vertex.visits == 0 for adjacent_vertex, _, _ in vertex.edges):
                 if all(adjacent_vertex_2.visits == 0 for adjacent_vertex, _, _ in vertex.edges for adjacent_vertex_2, _, _ in adjacent_vertex.edges):
                     return vertex, False
-    return None, len(graph.vertices) == len(exceptions)
+    return None, len(graph.vertices) == len(excluded_vertices)
 
 def dijkstra_shortest_path(graph, start_vertex, end_vertex):
     distances = {vertex: float('inf') for vertex in graph.vertices}
@@ -52,33 +52,32 @@ def dijkstra_shortest_path(graph, start_vertex, end_vertex):
     parent = {start_vertex: None}
 
     while priority_queue:
-        current_distance, current_vertex = heapq.heappop(priority_queue)
-        if current_vertex == end_vertex:
+        distance_so_far, current_node = heapq.heappop(priority_queue)
+        if current_node == end_vertex:
             break
-        for neighbor, edge_weight, _ in current_vertex.edges:
-            distance = current_distance + edge_weight
-            if distance < distances[neighbor]:
-                distances[neighbor] = distance
-                parent[neighbor] = current_vertex
-                heapq.heappush(priority_queue, (distance, neighbor))
+        for adjacent_vertex, edge_weight, _ in current_node.edges:
+            distance = distance_so_far + edge_weight
+            if distance < distances[adjacent_vertex]:
+                distances[adjacent_vertex] = distance
+                parent[adjacent_vertex] = current_node
+                heapq.heappush(priority_queue, (distance, adjacent_vertex))
 
     if distances[end_vertex] == float('inf'):
         return None, float('inf')
 
     shortest_path = []
-    current_vertex = end_vertex
-    while current_vertex is not None:
-        shortest_path.append(current_vertex)
-        current_vertex = parent[current_vertex]
+    current_node = end_vertex
+    while current_node is not None:
+        shortest_path.append(current_node)
+        current_node = parent[current_node]
     shortest_path.reverse()
 
     final_path = [[shortest_path.pop(0), 0]]
     for vertex in shortest_path:
-        vertex.visits += 1
-        distance = next((edge_weight for neighbor, edge_weight, _ in final_path[-1][0].edges if neighbor == vertex), None)
+        vertex.increment_visits()
+        distance = next((edge_weight for adjacent_vertex, edge_weight, _ in final_path[-1][0].edges if adjacent_vertex == vertex), None)
         final_path.append([vertex, distance])
     return final_path, distances[end_vertex]
-
 def levenshteinDistance(str1, str2):
     m = len(str1)
     n = len(str2)
